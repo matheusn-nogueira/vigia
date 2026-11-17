@@ -1,0 +1,23 @@
+# O GitHub desliga o agendamento de repo público depois de 60 dias sem commit. Este repo quase
+# nunca muda, então todo dia 1 um commit vazio mantém o vigia ligado.
+name: manter-ativo
+
+on:
+  schedule:
+    - cron: '0 12 1 * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit --allow-empty -q -m "manter o agendamento do vigia ligado"
+          git push -q
