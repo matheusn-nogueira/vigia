@@ -1,0 +1,44 @@
+# Vigia dos sites da loja: a cada 15 min confere se o cardápio, o ERP, o caixa e o WhatsApp
+# automático (Evolution) respondem. Falha = e-mail do GitHub para o dono.
+# Mora num repo público só dele (desde 17/11/2026), porque repo público não gasta minutos do
+# Actions; antes morava no cardapio-digital, que fechou. Não usa segredo nem código da loja.
+# O GitHub pode atrasar o agendamento em horário de pico; não é alarme em tempo real.
+# Mesma conferência, à mão e mais completa: python3 pdv-balcao/scripts/deploy-easypanel.py --conferir
+name: vigia
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: vigia
+  cancel-in-progress: false
+
+# token do GitHub só lê
+permissions:
+  contents: read
+
+jobs:
+  sites:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Sites respondendo
+        run: |
+          falhou=0
+          for url in \
+            https://cardapio.casadosfundos.cloud/ \
+            https://sistema.casadosfundos.cloud/ \
+            https://caixa.casadosfundos.cloud/ \
+            https://caixa.casadosfundos.cloud/conversa.html \
+            https://evolution.casadosfundos.cloud/ ; do
+            ok=0
+            for tentativa in 1 2 3; do
+              codigo=$(curl -s -o /dev/null -w '%{http_code}' -m 20 -A 'vigia-casadosfundos' "$url" || true)
+              if [ "$codigo" = "200" ]; then ok=1; break; fi
+              sleep 20   # deploy em andamento ou instabilidade curta: tenta de novo
+            done
+            if [ $ok = 1 ]; then echo "ok    $url"; else echo "FORA  $url ($codigo)"; falhou=1; fi
+          done
+          exit $falhou
